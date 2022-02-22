@@ -16,6 +16,9 @@ func collectLogEvent(t *testing.T, f func()) map[string]interface{} {
 	r, w := io.Pipe()
 	defer r.Close()
 	log.SetOutput(w)
+	t.Cleanup(func() {
+		log.SetOutput(log.New().Out)
+	})
 	log.SetFormatter(&log.JSONFormatter{})
 
 	go func() {
