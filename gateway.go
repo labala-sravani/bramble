@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,9 +39,20 @@ func (g *Gateway) UpdateSchemas(interval time.Duration) {
 func (g *Gateway) Router() http.Handler {
 	mux := http.NewServeMux()
 
+	// Mostly the same as `handler.NewDefaultServer` minus the caching features
+	gatewayHandler := handler.New(g.ExecutableSchema)
+	gatewayHandler.AddTransport(transport.Websocket{
+		KeepAlivePingInterval: 10 * time.Second,
+	})
+	gatewayHandler.AddTransport(transport.Options{})
+	gatewayHandler.AddTransport(transport.GET{})
+	gatewayHandler.AddTransport(transport.POST{})
+	gatewayHandler.AddTransport(transport.MultipartForm{})
+	gatewayHandler.Use(extension.Introspection{})
+
 	mux.Handle("/query",
 		applyMiddleware(
-			handler.NewDefaultServer(g.ExecutableSchema),
+			gatewayHandler,
 			debugMiddleware,
 		),
 	)
